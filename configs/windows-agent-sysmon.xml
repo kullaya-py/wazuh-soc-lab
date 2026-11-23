@@ -1,0 +1,5 @@
+<!-- เพิ่มส่วนนี้ภายใน <ossec_config> ของ C:\Program Files (x86)\ossec-agent\ossec.conf -->
+<localfile>
+  <location>Microsoft-Windows-Sysmon/Operational</location>
+  <log_format>eventchannel</log_format>
+</localfile>
