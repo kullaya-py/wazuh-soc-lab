@@ -22,26 +22,44 @@
 |---|---|---|
 | `NET START Wazuh` → *The service name is invalid* | `msiexec /q` รันเบื้องหลังและติดตั้งล้มเหลวแบบเงียบ เพราะ PowerShell ไม่ได้รันแบบ Administrator | ติดตั้งใหม่ด้วย `Start-Process ... -Wait` (ไม่ใช้ `/q`) เพื่อให้เห็นหน้าต่างติดตั้งและ error |
 | `NET START Wazuh` → *System error 5 – Access is denied* | PowerShell ไม่ได้รันแบบ Administrator (path `C:\WINDOWS\system32` ไม่ได้แปลว่าเป็น admin) | เปิด Terminal (Admin) แล้วสั่ง `NET START Wazuh` ใหม่ |
+| `Restart-Service WazuhSvc` → *Cannot stop service* | service กำลังทำงานค้างอยู่ในจังหวะนั้น | สั่งซ้ำอีกครั้ง |
 
 บทเรียน: ตรวจแถบชื่อหน้าต่างว่ามีคำว่า **Administrator** ก่อนติดตั้งหรือจัดการ service เสมอ
 
-## 2. ติดตั้ง Sysmon (TODO)
+## 2. ติดตั้ง Sysmon ✅
 
-1. ดาวน์โหลด Sysmon จาก Microsoft Sysinternals แล้วแตกไฟล์
-2. ดาวน์โหลด config ที่นิยมใช้ เช่น `sysmonconfig-export.xml` ของ SwiftOnSecurity
-3. ติดตั้ง (PowerShell แบบ Administrator ในโฟลเดอร์ที่แตกไฟล์):
+Sysmon (Microsoft Sysinternals) บันทึกกิจกรรมละเอียดของ Windows เช่น process ที่ถูกเปิดพร้อม command line และ parent process, การเชื่อมต่อเครือข่าย, ไฟล์ที่ถูกสร้าง และ DNS query ซึ่ง log ปกติของ Windows ไม่มี
 
-   ```powershell
-   .\Sysmon64.exe -accepteula -i sysmonconfig-export.xml
-   ```
-
-## 3. ให้ agent ส่ง log ของ Sysmon (TODO)
-
-แก้ไฟล์ `C:\Program Files (x86)\ossec-agent\ossec.conf` (เปิด Notepad แบบ Administrator)
-โดยเพิ่มเนื้อหาจาก [`configs/windows-agent-sysmon.xml`](../configs/windows-agent-sysmon.xml) ไว้ภายใน `<ossec_config>` แล้วรีสตาร์ต agent:
+ใช้ config ของ SwiftOnSecurity เพื่อกรอง noise (PowerShell แบบ Administrator):
 
 ```powershell
-Restart-Service -Name WazuhSvc
+mkdir C:\Tools\Sysmon -Force; cd C:\Tools\Sysmon
+Invoke-WebRequest https://download.sysinternals.com/files/Sysmon.zip -OutFile Sysmon.zip
+Expand-Archive Sysmon.zip -DestinationPath . -Force
+Invoke-WebRequest https://raw.githubusercontent.com/SwiftOnSecurity/sysmon-config/master/sysmonconfig-export.xml -OutFile sysmonconfig-export.xml
+.\Sysmon64.exe -accepteula -i sysmonconfig-export.xml
 ```
 
-ตรวจสอบใน **Threat Hunting** ด้วยการค้นหา `data.win.system.channel: "Microsoft-Windows-Sysmon/Operational"`
+ตรวจสอบ:
+
+```powershell
+Get-Service Sysmon64
+Get-WinEvent -LogName Microsoft-Windows-Sysmon/Operational -MaxEvents 3
+```
+
+## 3. ให้ agent ส่ง log ของ Sysmon ✅
+
+```powershell
+notepad "C:\Program Files (x86)\ossec-agent\ossec.conf"
+```
+
+วางเนื้อหาจาก [`configs/windows-agent-sysmon.xml`](../configs/windows-agent-sysmon.xml) ไว้ก่อน `</ossec_config>` ตัวสุดท้าย แล้ว:
+
+```powershell
+Restart-Service WazuhSvc
+Select-String -Path "C:\Program Files (x86)\ossec-agent\ossec.log" -Pattern "Sysmon" | Select-Object -Last 3
+```
+
+ผลลัพธ์: agent อ่าน event log ของ Sysmon แล้ว (`Analyzing event log: 'Microsoft-Windows-Sysmon/Operational'`)
+
+![Sysmon agent log](../screenshots/08-sysmon-agent-log.png)

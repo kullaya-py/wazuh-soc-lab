@@ -1,0 +1,51 @@
+<!--
+  Custom rules for the Wazuh SOC home lab.
+  File on the Wazuh server: /var/ossec/etc/rules/local_rules.xml
+  Apply with: sudo systemctl restart wazuh-manager
+  Custom rule IDs use the 100000–120000 range.
+
+  Note: Windows eventchannel values are stored with doubled backslashes
+  (C:\\Windows\\...), so path patterns use \\+ (one or more backslashes).
+-->
+
+<!-- Example rule shipped with Wazuh -->
+<group name="local,syslog,sshd,">
+  <rule id="100001" level="5">
+    <if_sid>5716</if_sid>
+    <srcip>1.1.1.1</srcip>
+    <description>sshd: authentication failed from IP 1.1.1.1.</description>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
+  </rule>
+</group>
+
+<group name="local,windows,sysmon,">
+
+  <!--
+    Tuning: rule 92213 (level 15) fires every time PowerShell starts, because
+    PowerShell writes __PSScriptPolicyTest_*.ps1 to %TEMP% to test script policy.
+    Lower it to level 3 only when the file name, folder AND creating process all
+    match, so other executables dropped in Temp still raise the level 15 alert.
+  -->
+  <rule id="100100" level="3">
+    <if_sid>92213</if_sid>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)\\+AppData\\+Local\\+Temp\\+__PSScriptPolicyTest_[a-z0-9]+\.[a-z0-9]+\.ps1$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\+WindowsPowerShell\\+v1\.0\\+powershell\.exe$</field>
+    <description>Tuned (benign): PowerShell script policy test file created in Temp</description>
+  </rule>
+
+  <!--
+    Detection gap: whoami / systeminfo run from cmd.exe raised no alert
+    (built-in rule 92033 only covers discovery spawned by PowerShell).
+    Alert on these discovery tools regardless of the parent process.
+  -->
+  <rule id="100110" level="8">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\+(whoami|systeminfo)\.exe$</field>
+    <description>Discovery command executed: $(win.eventdata.commandLine) (parent: $(win.eventdata.parentImage))</description>
+    <mitre>
+      <id>T1033</id>
+      <id>T1082</id>
+    </mitre>
+  </rule>
+
+</group>

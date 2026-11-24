@@ -37,10 +37,18 @@
 
 - [x] [01 – สร้าง VM และติดตั้ง Ubuntu Server](docs/01-vm-setup.md)
 - [x] [02 – ติดตั้ง Wazuh all-in-one](docs/02-wazuh-install.md)
-- [x] [03 – ติดตั้ง Wazuh agent บน Windows](docs/03-windows-agent-sysmon.md) (Sysmon: TODO)
-- [ ] [04 – จำลองการโจมตีและตรวจสอบ alert](docs/04-attack-simulation.md) (ทดสอบ logon failure แล้ว ✅)
-- [ ] 05 – เขียน custom rules
-- [ ] 06 – สรุปผลและบทเรียน
+- [x] [03 – ติดตั้ง Wazuh agent + Sysmon บน Windows](docs/03-windows-agent-sysmon.md)
+- [x] [04 – จำลองการโจมตีและตรวจสอบ alert](docs/04-attack-simulation.md) (6 การทดสอบ + triage false positive)
+- [x] [05 – Custom rules: tuning และปิด detection gap](docs/05-custom-rules.md)
+- [x] [06 – สรุปผลและบทเรียน](docs/06-lessons-learned.md)
+
+## ผลงานเด่น
+
+- จำลองการโจมตี 6 ชุด: ล็อกอินผิด, brute force (Windows และ SSH), สร้าง user, ยกสิทธิ์เป็น admin, discovery commands
+- Triage alert level 15 ที่เกิดขึ้นจริง และพิสูจน์ว่าเป็น false positive จากหลักฐานใน log
+- พบ detection gap (discovery จาก cmd ไม่ถูกตรวจจับ) แล้วเขียน custom rule ปิดช่องโหว่ (MITRE T1033, T1082)
+- ทำ detection tuning ลด alert ปลอม level 15 → 3 โดยยังคงการตรวจจับไฟล์อันตรายอื่นไว้
+- แก้ปัญหา rule ไม่ match จากรูปแบบข้อมูลจริง (backslash คู่ใน Windows eventchannel)
 
 ## ข้อจำกัดของแล็บ
 
